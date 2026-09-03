@@ -1,0 +1,80 @@
+{
+  "name": "codeshare",
+  "displayName": "codeshare",
+  "description": "Share a folder peer-to-peer with another developer's local AI assistant via a remote MCP server.",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "codeshare",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:codeshare.start",
+    "onCommand:codeshare.stop",
+    "onCommand:codeshare.connectGuest",
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "codeshare.start", "title": "Codeshare: Start Session" },
+      { "command": "codeshare.stop", "title": "Codeshare: Stop Session" },
+      { "command": "codeshare.connectGuest", "title": "Codeshare: Connect as Guest" }
+    ],
+    "configuration": {
+      "title": "codeshare",
+      "properties": {
+        "codeshare.port": {
+          "type": "number",
+          "default": 8443,
+          "description": "Port the host MCP server listens on."
+        },
+        "codeshare.maxFileSizeMb": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum file size (MB) the tools will read/write."
+        },
+        "codeshare.host": {
+          "type": "string",
+          "default": "0.0.0.0",
+          "description": "Host address to bind. 0.0.0.0 accepts remote connections; 127.0.0.1 is local-only."
+        },
+        "codeshare.cert": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to a PEM certificate for the host server. Leave empty to use a generated self-signed cert (LAN/dev) or a plain-HTTP dev server."
+        },
+        "codeshare.key": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to the PEM private key paired with codeshare.cert."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@codeshare/host": "*",
+    "@codeshare/shared": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "selfsigned": "^2.4.1",
+    "undici": "^7.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.1.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "codeshare",
+  "version": "0.1.0",
+  "description": "P2P code sharing for local AI assistants — host exposes an authenticated MCP server over TLS; guest's AI connects as a remote MCP client.",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/host",
+    "packages/extension"
+  ],
+  "scripts": {
+    "build": "npm run build -w @codeshare/shared && npm run build -w @codeshare/host && npm run build -w codeshare",
+    "test": "npm run test -w @codeshare/shared && npm run test -w @codeshare/host && npm run test -w codeshare",
+    "typecheck": "npm run typecheck -w @codeshare/shared && npm run typecheck -w @codeshare/host && npm run typecheck -w codeshare"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
