@@ -21,7 +21,7 @@ async function launchHost(): Promise<{ url: string }> {
   }
   const server = await startServer({ root, sessionCode: CODE, port: 0, host: '127.0.0.1' });
   servers.push(server);
-  return { url: server.url };
+  return { url: server.localUrl };
 }
 
 describe('verifyRemote', () => {

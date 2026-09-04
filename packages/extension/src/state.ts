@@ -51,6 +51,27 @@ export function mergeMcpConfig(
 }
 
 /**
+ * Whether a host URL plausibly needs the self-signed-certificate escape hatch.
+ *
+ * Bare IPs, `.local` names and single-label hostnames are LAN/dev hosts that cannot hold a
+ * publicly-trusted certificate. Real DNS names (Cloudflare tunnels, reverse proxies) can, so we
+ * require normal validation for them rather than inviting the guest to disable it.
+ */
+export function hostNeedsCertOverride(url: string): boolean {
+  let hostname: string;
+  try {
+    hostname = new URL(url).hostname;
+  } catch {
+    return true;
+  }
+  // `new URL` brackets IPv6 literals; strip them before inspecting.
+  const bare = hostname.replace(/^\[|\]$/g, '');
+  const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(bare);
+  const isIpv6 = bare.includes(':');
+  return isIpv4 || isIpv6 || bare.endsWith('.local') || !bare.includes('.');
+}
+
+/**
  * Compute the human-facing connection summary shown to the host.
  */
 export function hostSummary(state: Pick<SessionState, 'id' | 'root' | 'sessionCode' | 'url'>): string {

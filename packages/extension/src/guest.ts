@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { generateSessionId } from '@codeshare/shared';
 import { verifyRemote } from './guestVerify.js';
-import { buildMcpServerEntry, mergeMcpConfig, type SessionState } from './state.js';
+import { buildMcpServerEntry, hostNeedsCertOverride, mergeMcpConfig, type SessionState } from './state.js';
 
 const STATE_KEY = 'codeshare.active';
 const MCP_CONFIG_NAME = '.mcp.json';
@@ -38,8 +38,12 @@ export async function connectGuest(context: vscode.ExtensionContext): Promise<vo
   if (codeInput === undefined) return; // cancelled
   const sessionCode = codeInput.trim();
 
-  const insecure = await promptInsecure();
+  // A publicly-trusted host (e.g. a Cloudflare tunnel) never needs the insecure escape hatch, and
+  // offering it there only invites the guest to weaken a connection that already validates.
+  const insecure = hostNeedsCertOverride(url) ? await promptInsecure() : false;
   if (insecure === undefined) return;
+
+  await warnIfRemoteMismatch();
 
   await vscode.window.withProgress(
     {
@@ -83,6 +87,24 @@ export async function connectGuest(context: vscode.ExtensionContext): Promise<vo
         `Connected to codeshare session (${result.serverName}) as guest.\nWrote ${MCP_CONFIG_NAME} for your AI assistant.${toolList}`,
       );
     },
+  );
+}
+
+/**
+ * `.mcp.json` is only useful if the guest's AI assistant runs in the same filesystem context as
+ * this extension. In a WSL/SSH/container window the extension runs on the remote side — if their
+ * assistant runs on the Windows host instead (or vice versa), it will never see the file and the
+ * failure is silent. Warn rather than block, since we cannot detect where their assistant lives.
+ */
+async function warnIfRemoteMismatch(): Promise<void> {
+  const remote = vscode.env.remoteName;
+  if (!remote) return;
+  const where = remote === 'wsl' ? 'WSL' : remote;
+  await vscode.window.showWarningMessage(
+    `This window is connected to ${where}, so .mcp.json will be written inside ${where}. ` +
+      `Your AI assistant must also run inside ${where} to see it — if you run it on the host OS ` +
+      `instead, it will start with no codeshare tools and no error.`,
+    'Got it',
   );
 }
 

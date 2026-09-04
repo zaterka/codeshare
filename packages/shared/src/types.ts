@@ -18,8 +18,14 @@ export interface ServerOptions {
 }
 
 export interface RunningServer {
-  /** e.g. https://0.0.0.0:8443/codeshare */
-  url: string;
+  /**
+   * The URL of this server on the machine it runs on, e.g. `http://127.0.0.1:8443/codeshare`.
+   * This is NOT necessarily reachable by a guest — a `0.0.0.0` bind has no single public name.
+   * Callers that need a shareable URL must derive one (LAN address, tunnel hostname, reverse proxy).
+   */
+  localUrl: string;
+  /** The port actually bound (resolved, so a `port: 0` request reports the real port). */
+  port: number;
   /** Cleanly stop the https server + all MCP sessions. */
   close: () => Promise<void>;
   /** Current connected MCP client sessions (session ids). For host "who's connected" view. */

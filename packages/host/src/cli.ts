@@ -82,7 +82,7 @@ export async function main(argv: string[]): Promise<void> {
 
   const server = await startServer(options);
   console.log(`codeshare serving ${a.root}`);
-  console.log(`URL:  ${server.url}`);
+  console.log(`URL:  ${server.localUrl}   (local only — see README for reaching this from another machine)`);
   console.log(`Code: ${sessionCode}`);
   console.log('Include it as: Authorization: Bearer <code>');
   console.log('Share the URL + code with your guest. Press Ctrl+C to stop.');

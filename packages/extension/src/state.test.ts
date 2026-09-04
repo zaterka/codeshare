@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildMcpServerEntry, mergeMcpConfig, hostSummary } from './state.js';
+import { buildMcpServerEntry, mergeMcpConfig, hostSummary, hostNeedsCertOverride } from './state.js';
 
 describe('buildMcpServerEntry', () => {
   it('builds a Claude-Code / MCP-compatible http entry with bearer auth', () => {
@@ -61,5 +61,23 @@ describe('hostSummary', () => {
     expect(summary).toContain('/path/to/folder');
     expect(summary).toContain('123456');
     expect(summary).toContain('https://localhost:8443/codeshare');
+  });
+});
+
+describe('hostNeedsCertOverride', () => {
+  it('requires normal TLS validation for real DNS names (tunnels, reverse proxies)', () => {
+    expect(hostNeedsCertOverride('https://witty-otter-42.trycloudflare.com/codeshare')).toBe(false);
+    expect(hostNeedsCertOverride('https://share.example.com/codeshare')).toBe(false);
+  });
+
+  it('offers the override for LAN/dev hosts that cannot hold a trusted cert', () => {
+    expect(hostNeedsCertOverride('https://10.49.32.127:8443/codeshare')).toBe(true);
+    expect(hostNeedsCertOverride('https://macbook.local:8443/codeshare')).toBe(true);
+    expect(hostNeedsCertOverride('https://devbox:8443/codeshare')).toBe(true);
+    expect(hostNeedsCertOverride('https://[fe80::1]:8443/codeshare')).toBe(true);
+  });
+
+  it('fails safe (offers the override) on an unparseable URL', () => {
+    expect(hostNeedsCertOverride('not a url')).toBe(true);
   });
 });

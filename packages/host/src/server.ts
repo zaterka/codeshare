@@ -195,7 +195,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const port = (server.address() as { port: number }).port;
 
   return {
-    url: `${scheme}://${host === '0.0.0.0' ? 'localhost' : host}:${port}${ENDPOINT_PATH}`,
+    // Loopback is the one address that is always correct for the machine we run on. A `0.0.0.0`
+    // bind has no single public name, so we deliberately do not invent one here — deriving a
+    // guest-reachable URL (tunnel hostname, LAN IP, reverse proxy) is the caller's job.
+    localUrl: `${scheme}://127.0.0.1:${port}${ENDPOINT_PATH}`,
+    port,
     get connectedSessions() {
       return [...sessions.keys()];
     },

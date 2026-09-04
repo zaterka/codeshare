@@ -3,3 +3,13 @@ dist/
 out/
 *.tsbuildinfo
 .vscode-test/
+
+# Build artifacts — ship the VSIX via GitHub Releases, not in-tree.
+*.vsix
+
+# OS noise
+.DS_Store
+
+# Local tooling state (machine-specific paths, local endpoints — never useful to others)
+.claude/
+.serena/

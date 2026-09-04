@@ -3,14 +3,28 @@
   "displayName": "codeshare",
   "description": "Share a folder peer-to-peer with another developer's local AI assistant via a remote MCP server.",
   "version": "0.1.0",
-  "private": true,
-  "publisher": "codeshare",
+  "publisher": "zaterka",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zaterka/codeshare.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zaterka/codeshare/issues"
+  },
+  "homepage": "https://github.com/zaterka/codeshare#readme",
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "mcp",
+    "ai",
+    "pair programming",
+    "collaboration",
+    "claude"
   ],
   "activationEvents": [
     "onCommand:codeshare.start",
@@ -32,6 +46,16 @@
           "type": "number",
           "default": 8443,
           "description": "Port the host MCP server listens on."
+        },
+        "codeshare.tunnel": {
+          "type": "string",
+          "enum": ["cloudflared", "off"],
+          "default": "cloudflared",
+          "enumDescriptions": [
+            "Publish the session through a Cloudflare quick tunnel. Works across networks and countries with no port-forward or VPN, and gives the guest a real TLS certificate. Requires the `cloudflared` binary on PATH. Note: TLS terminates at Cloudflare's edge, so this path is not end-to-end private.",
+            "Serve directly on the configured host/port. End-to-end private, but the guest must reach this machine over LAN, VPN, or a port-forward."
+          ],
+          "description": "How the host becomes reachable by a guest."
         },
         "codeshare.maxFileSizeMb": {
           "type": "number",
@@ -60,6 +84,7 @@
     "build": "node esbuild.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:e2e": "CODESHARE_E2E=1 vitest run src/tunnelE2E.test.ts",
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {

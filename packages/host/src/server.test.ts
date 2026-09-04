@@ -52,7 +52,7 @@ describe('codeshare host MCP integration', () => {
   }
 
   async function makeClient(opts: { code?: string; insecure?: boolean } = {}) {
-    const transport = new StreamableHTTPClientTransport(server.url, {
+    const transport = new StreamableHTTPClientTransport(server.localUrl, {
       requestInit: { headers: { authorization: `Bearer ${opts.code ?? CODE}` } },
       fetch: opts.insecure ? buildInsecureFetch() : undefined,
     });
@@ -63,18 +63,18 @@ describe('codeshare host MCP integration', () => {
 
   describe('authentication', () => {
     it('returns 401 with WWW-Authenticate for a bad token', async () => {
-      const resp = await fetch(server.url, { headers: { authorization: 'Bearer wrong' } });
+      const resp = await fetch(server.localUrl, { headers: { authorization: 'Bearer wrong' } });
       expect(resp.status).toBe(401);
       expect(resp.headers.get('www-authenticate')).toBe('Bearer');
     });
 
     it('returns 401 when no token is supplied', async () => {
-      const resp = await fetch(server.url);
+      const resp = await fetch(server.localUrl);
       expect([401, 400, 405]).toContain(resp.status);
     });
 
     it('returns 404 for a non-endpoint path even with auth', async () => {
-      const resp = await fetch(new URL('/other', server.url).href, {
+      const resp = await fetch(new URL('/other', server.localUrl).href, {
         headers: { authorization: `Bearer ${CODE}` },
       });
       expect(resp.status).toBe(404);
@@ -190,7 +190,7 @@ describe('codeshare host MCP integration', () => {
 
     it('refuses a wrong code over TLS', async () => {
       await relaunch(true);
-      const resp = await buildInsecureFetch()(server.url, {
+      const resp = await buildInsecureFetch()(server.localUrl, {
         headers: { authorization: 'Bearer nope' },
       });
       expect(resp.status).toBe(401);
