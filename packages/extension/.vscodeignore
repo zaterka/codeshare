@@ -1,5 +1,9 @@
 .vscode/**
 src/**
+# Never nest a previous build's VSIX inside the new one. The `.zip` suffix matters: vsce leaves a
+# `<name>.vsix.zip` behind when a package run fails, and `*.vsix` alone does not match it.
+*.vsix
+*.vsix.zip
 out/**/*.map
 node_modules/**
 tsconfig.json

@@ -86,7 +86,7 @@ npm workspaces monorepo (TypeScript + esbuild + Node):
 ## Build & test
 
 ```bash
-npm install --cache ./node_modules/.npm-cache   # (global npm cache may be broken on this machine)
+npm install
 npm run build          # shared (tsc) -> host (esbuild) -> extension (esbuild)
 npm run typecheck
 npm test
@@ -107,9 +107,13 @@ node packages/host/dist/cli.js serve --root ~/projects/api --port 8443
 ### Package the extension as a VSIX
 
 ```bash
+npm install
 npm run package -w codeshare
 # produces codeshare-0.1.0.vsix in packages/extension
 ```
+
+`package` builds first (via `vscode:prepublish`), so a fresh clone needs only `npm install` — there
+is no separate `npm run build` step required beforehand.
 
 ## Installing
 

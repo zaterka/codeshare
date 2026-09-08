@@ -35,9 +35,18 @@
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      { "command": "codeshare.start", "title": "Codeshare: Start Session" },
-      { "command": "codeshare.stop", "title": "Codeshare: Stop Session" },
-      { "command": "codeshare.connectGuest", "title": "Codeshare: Connect as Guest" }
+      {
+        "command": "codeshare.start",
+        "title": "Codeshare: Start Session"
+      },
+      {
+        "command": "codeshare.stop",
+        "title": "Codeshare: Stop Session"
+      },
+      {
+        "command": "codeshare.connectGuest",
+        "title": "Codeshare: Connect as Guest"
+      }
     ],
     "configuration": {
       "title": "codeshare",
@@ -49,7 +58,10 @@
         },
         "codeshare.tunnel": {
           "type": "string",
-          "enum": ["cloudflared", "off"],
+          "enum": [
+            "cloudflared",
+            "off"
+          ],
           "default": "cloudflared",
           "enumDescriptions": [
             "Publish the session through a Cloudflare quick tunnel. Works across networks and countries with no port-forward or VPN, and gives the guest a real TLS certificate. Requires the `cloudflared` binary on PATH. Note: TLS terminates at Cloudflare's edge, so this path is not end-to-end private.",
@@ -82,6 +94,7 @@
   },
   "scripts": {
     "build": "node esbuild.mjs",
+    "vscode:prepublish": "npm --prefix ../.. run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "CODESHARE_E2E=1 vitest run src/tunnelE2E.test.ts",
@@ -95,11 +108,11 @@
     "undici": "^7.29.0"
   },
   "devDependencies": {
-    "@types/node": "^20.16.0",
+    "@types/node": "^22.0.0",
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.1.0",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.4"
+    "vitest": "^5.0.0"
   }
 }

@@ -5,7 +5,9 @@ out/
 .vscode-test/
 
 # Build artifacts — ship the VSIX via GitHub Releases, not in-tree.
+# `*.vsix.zip` is the partial file vsce leaves behind when a package run fails.
 *.vsix
+*.vsix.zip
 
 # OS noise
 .DS_Store
