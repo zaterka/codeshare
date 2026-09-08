@@ -21,8 +21,30 @@ const HOSTNAME_TIMEOUT_MS = 30_000;
  * Match the published quick-tunnel origin. The trailing lookahead anchors the end of the hostname
  * so a longer name that merely *contains* `.trycloudflare.com` as a prefix — e.g.
  * `https://x.trycloudflare.com.example.test/` — is not mistaken for the real thing.
+ *
+ * Global, because a log line can contain a `trycloudflare.com` URL that is NOT our tunnel; callers
+ * must filter candidates through `INFRA_SUBDOMAINS`.
  */
-const QUICK_TUNNEL_URL = /https:\/\/[a-z0-9][a-z0-9-]*\.trycloudflare\.com(?![a-z0-9.-])/i;
+const QUICK_TUNNEL_URL = /https:\/\/([a-z0-9][a-z0-9-]*)\.trycloudflare\.com(?![a-z0-9.-])/gi;
+
+/**
+ * Subdomains of `trycloudflare.com` that belong to Cloudflare's own infrastructure rather than to
+ * an assigned tunnel. `api.trycloudflare.com` is the control-plane endpoint cloudflared POSTs to in
+ * order to *request* a quick tunnel — and it appears in the log on registration retries, e.g.
+ * `Request failed, retrying POST https://api.trycloudflare.com/tunnel`. Scraping that as the tunnel
+ * hostname produced a URL that looked plausible and was completely dead.
+ */
+const INFRA_SUBDOMAINS = new Set(['api', 'update', 'www']);
+
+/** Extract the assigned tunnel origin from a chunk of cloudflared output, if present. */
+function findTunnelOrigin(text: string): string | undefined {
+  for (const match of text.matchAll(QUICK_TUNNEL_URL)) {
+    const label = (match[1] ?? '').toLowerCase();
+    if (INFRA_SUBDOMAINS.has(label)) continue;
+    return match[0].replace(/\/+$/, '');
+  }
+  return undefined;
+}
 
 /**
  * Platform-appropriate install instructions. Hosting works from macOS, Linux, WSL and native
@@ -130,13 +152,21 @@ export interface StartTunnelOptions {
   waitForReady?: boolean;
   /** Override the readiness-probe budget. Tests use a short one; production uses the default. */
   readyTimeoutMs?: number;
+  /** Override how long to wait for cloudflared to publish a hostname. */
+  publishTimeoutMs?: number;
 }
 
 export async function startTunnel(
   port: number,
   opts: StartTunnelOptions = {},
 ): Promise<RunningTunnel> {
-  const { binary = 'cloudflared', argv, waitForReady = true, readyTimeoutMs } = opts;
+  const {
+    binary = 'cloudflared',
+    argv,
+    waitForReady = true,
+    readyTimeoutMs,
+    publishTimeoutMs = HOSTNAME_TIMEOUT_MS,
+  } = opts;
   const child = spawn(
     binary,
     argv ?? ['tunnel', '--no-autoupdate', '--url', `http://127.0.0.1:${port}`],
@@ -206,8 +236,8 @@ export async function startTunnel(
       const text = String(chunk);
       // Keep a bounded tail of the output to classify a premature exit.
       diagnostics = (diagnostics + text).slice(-4096);
-      const match = QUICK_TUNNEL_URL.exec(text);
-      if (match) succeed(match[0].replace(/\/+$/, ''));
+      const origin = findTunnelOrigin(text);
+      if (origin) succeed(origin);
     };
     child.stdout?.on('data', scan);
     child.stderr?.on('data', scan);
@@ -235,10 +265,26 @@ export async function startTunnel(
       );
     });
 
-    timer = setTimeout(
-      () => fail(new Error('Timed out waiting for cloudflared to publish a tunnel hostname.')),
-      HOSTNAME_TIMEOUT_MS,
-    );
+    timer = setTimeout(() => {
+      // Most often this means cloudflared could not reach Cloudflare to register the tunnel at all
+      // — look for `Request failed, retrying POST https://api.trycloudflare.com/tunnel` in its
+      // output, which indicates blocked or failing outbound access rather than a codeshare problem.
+      const registrationRetrying = /retrying POST https:\/\/api\.trycloudflare\.com/i.test(
+        diagnostics,
+      );
+      const detail = diagnostics.trim().split('\n').slice(-3).join(' ').slice(0, 300);
+      fail(
+        new Error(
+          'Timed out waiting for cloudflared to publish a tunnel hostname.' +
+            (registrationRetrying
+              ? ' cloudflared could not reach Cloudflare to register the tunnel — its outbound' +
+                ' HTTPS access is blocked or DNS is failing. On WSL this is usually DNS:' +
+                ' check `getent ahostsv4 api.trycloudflare.com` inside the distro.'
+              : '') +
+            (detail ? ` Last output: ${detail}` : ''),
+        ),
+      );
+    }, publishTimeoutMs);
     timer.unref?.();
   });
 }

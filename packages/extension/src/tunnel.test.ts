@@ -98,6 +98,41 @@ describe('startTunnel', () => {
     await tunnel.close();
   });
 
+  it("ignores cloudflared's own api.trycloudflare.com control-plane URL", async () => {
+    // Observed in the wild on a host where tunnel registration was retrying: the log contained
+    // `Request failed, retrying POST https://api.trycloudflare.com/tunnel` BEFORE any assigned
+    // hostname. Scraping that produced a dead URL that looked completely legitimate.
+    const script = [
+      "process.stderr.write('INF Requesting new quick Tunnel on trycloudflare.com...\\n');",
+      "process.stderr.write('INF Request failed, retrying POST https://api.trycloudflare.com/tunnel\\n');",
+      "process.stderr.write('INF |  https://real-tunnel-name-here.trycloudflare.com  |\\n');",
+      'setTimeout(() => {}, 60000);',
+    ].join('');
+    const tunnel = await startTunnel(8443, {
+      binary: process.execPath,
+      argv: ['-e', script],
+      waitForReady: false,
+    });
+    expect(tunnel.origin).toBe('https://real-tunnel-name-here.trycloudflare.com');
+    await tunnel.close();
+  });
+
+  it('does not treat an api-only log stream as a published tunnel', async () => {
+    // If registration never succeeds, we must time out rather than hand back the control-plane URL.
+    const script = [
+      "process.stderr.write('INF Request failed, retrying POST https://api.trycloudflare.com/tunnel\\n');",
+      'setTimeout(() => {}, 60000);',
+    ].join('');
+    await expect(
+      startTunnel(8443, {
+        binary: process.execPath,
+        argv: ['-e', script],
+        waitForReady: false,
+        publishTimeoutMs: 3000,
+      }),
+    ).rejects.toThrow(/Timed out waiting for cloudflared/);
+  }, 20_000);
+
   it('ignores lookalike hostnames that are not trycloudflare.com', async () => {
     // Must not latch onto an attacker-ish or unrelated URL in the log stream.
     const script = [
