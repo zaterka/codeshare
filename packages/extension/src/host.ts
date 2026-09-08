@@ -74,6 +74,15 @@ async function resolveShareUrl(port: number, mode: TunnelMode): Promise<string> 
       () => startTunnel(port),
     );
     tunnel = t;
+    if (!t.verified) {
+      // Common on WSL, whose DNS often cannot resolve public names even when cloudflared's own
+      // outbound connection succeeded. The guest resolves independently, so this is informational.
+      void vscode.window.showWarningMessage(
+        `Tunnel published, but this machine could not reach it to confirm (${t.verificationError ?? 'unknown'}). ` +
+          'This is often a local DNS limitation — WSL especially — and the URL may still work fine ' +
+          'for your guest. Send it and check the status bar: it shows "(1 connected)" once they connect.',
+      );
+    }
     return `${t.origin}/codeshare`;
   }
 

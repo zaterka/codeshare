@@ -98,6 +98,17 @@ async function waitUntilRoutable(origin: string, timeoutMs = READY_TIMEOUT_MS): 
 export interface RunningTunnel {
   /** Public base origin, e.g. `https://foo-bar-baz.trycloudflare.com` (no trailing slash). */
   origin: string;
+  /**
+   * Whether we confirmed the published URL is reachable *from this machine*.
+   *
+   * `false` is not a failure. The probe is a courtesy check, and a host can fail it while the
+   * tunnel works perfectly for the guest — notably under WSL, whose DNS frequently cannot resolve
+   * public names even though cloudflared's outbound connection to Cloudflare succeeded. Since the
+   * guest resolves via entirely different DNS, we surface this as a warning, never a hard stop.
+   */
+  verified: boolean;
+  /** Why verification failed, when `verified` is false. */
+  verificationError?: string;
   /** Terminate the tunnel process. Safe to call more than once. */
   close: () => Promise<void>;
 }
@@ -173,15 +184,18 @@ export async function startTunnel(
       settled = true;
       clearTimeout(timer);
       if (!waitForReady) {
-        resolve({ origin, close: kill });
+        resolve({ origin, verified: false, close: kill });
         return;
       }
       // The banner prints before the hostname is routable — cloudflared says as much ("it may take
-      // some time to be reachable"). Handing the host a URL at that moment means the guest can hit
-      // ENOTFOUND or a Cloudflare 5xx. Wait for the edge to actually reach *our* server first.
+      // some time to be reachable"). Probing avoids handing the host a URL that is not live yet.
+      // But a failed probe does NOT mean a broken tunnel: it only proves *this* machine cannot
+      // reach the URL, and the guest uses different DNS and a different network path. So report the
+      // outcome and let the session start either way.
       waitUntilRoutable(origin, readyTimeoutMs).then(
-        () => resolve({ origin, close: kill }),
-        (err: Error) => void kill().then(() => reject(err)),
+        () => resolve({ origin, verified: true, close: kill }),
+        (err: Error) =>
+          resolve({ origin, verified: false, verificationError: err.message, close: kill }),
       );
     };
 

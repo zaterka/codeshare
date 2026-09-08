@@ -40,8 +40,10 @@ describe.runIf(ENABLED)('cloudflared end-to-end', () => {
     if (root) await fs.rm(root, { recursive: true, force: true });
   });
 
-  it('publishes a trycloudflare hostname', () => {
+  it('publishes a trycloudflare hostname and verifies it is reachable', () => {
     expect(tunnel.origin).toMatch(/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/);
+    // On a machine with working DNS the probe should confirm reachability.
+    expect(tunnel.verified).toBe(true);
   });
 
   it('serves MCP tools through the public URL and writes to the host folder', async () => {
